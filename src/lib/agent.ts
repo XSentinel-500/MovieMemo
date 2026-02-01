@@ -29,7 +29,7 @@ const agent = await createAgent({
     payments({
       config: {
         payTo: (process.env.PAYMENTS_RECEIVABLE_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-        network: 'base' as const,
+        network: 'eip155:8453' as const,
         facilitatorUrl: (process.env.PAYMENTS_FACILITATOR_URL || 'https://facilitator.daydreams.systems') as `${string}://${string}`,
       }
     })
