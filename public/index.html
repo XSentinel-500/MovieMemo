@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MovieMemo - Test Console</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #fff;
+      padding: 2rem;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 2rem; font-size: 2.5rem; }
+    .subtitle { text-align: center; color: #8892b0; margin-bottom: 2rem; }
+    .endpoints { display: grid; gap: 1rem; margin-bottom: 2rem; }
+    .endpoint {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .endpoint h3 { margin-bottom: 0.5rem; color: #64ffda; }
+    .endpoint.free h3 { color: #4ade80; }
+    .endpoint.paid h3 { color: #f472b6; }
+    .endpoint p { color: #8892b0; font-size: 0.9rem; margin-bottom: 1rem; }
+    .endpoint .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .endpoint.free .badge { background: #4ade80; color: #000; }
+    .endpoint.paid .badge { background: #f472b6; color: #000; }
+    .input-group { display: flex; gap: 0.5rem; }
+    input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 1rem;
+    }
+    input:focus { outline: none; border-color: #64ffda; }
+    button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-test { background: #64ffda; color: #000; }
+    .btn-test:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(100,255,218,0.3); }
+    .result {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .result.error { color: #ff6b6b; }
+    .result.payment { color: #f472b6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 MovieMemo</h1>
+    <p class="subtitle">AI-powered movie Q&A with x402 micropayments</p>
+    
+    <div class="endpoints">
+      <!-- FREE: Movie Info -->
+      <div class="endpoint free">
+        <span class="badge">FREE</span>
+        <h3>/movie-info</h3>
+        <p>Get basic movie info: director, cast, ratings, box office</p>
+        <div class="input-group">
+          <input type="text" id="movie-title" placeholder="Enter movie title (e.g., Inception)">
+          <button class="btn-test" onclick="callEndpoint('movie-info')">Test</button>
+        </div>
+        <div class="result" id="result-movie-info"></div>
+      </div>
+      
+      <!-- FREE: Trends -->
+      <div class="endpoint free">
+        <span class="badge">FREE</span>
+        <h3>/actor-director-trends</h3>
+        <p>Get career trends and rating charts for actors/directors</p>
+        <div class="input-group">
+          <input type="text" id="person-name" placeholder="Enter actor/director name (e.g., Christopher Nolan)">
+          <button class="btn-test" onclick="callEndpoint('actor-director-trends')">Test</button>
+        </div>
+        <div class="result" id="result-actor-director-trends"></div>
+      </div>
+      
+      <!-- PAID: Soundtrack -->
+      <div class="endpoint paid">
+        <span class="badge">💰 0.01 USDC</span>
+        <h3>/soundtrack-list</h3>
+        <p>Complete soundtrack list with YouTube Music links</p>
+        <div class="input-group">
+          <input type="text" id="soundtrack-movie" placeholder="Enter movie title (e.g., La La Land)">
+          <button class="btn-test" onclick="callEndpoint('soundtrack-list')">Test</button>
+        </div>
+        <div class="result" id="result-soundtrack-list"></div>
+      </div>
+      
+      <!-- PAID: Location -->
+      <div class="endpoint paid">
+        <span class="badge">💰 0.01 USDC</span>
+        <h3>/filming-location</h3>
+        <p>Identify filming locations with Google Maps links</p>
+        <div class="input-group">
+          <input type="text" id="location-movie" placeholder="Enter movie title (e.g., La La Land)">
+          <button class="btn-test" onclick="callEndpoint('filming-location')">Test</button>
+        </div>
+        <div class="result" id="result-filming-location"></div>
+      </div>
+      
+      <!-- PAID: Easter Eggs -->
+      <div class="endpoint paid">
+        <span class="badge">💰 0.01 USDC</span>
+        <h3>/easter-egg-guide</h3>
+        <p>Discover hidden easter eggs and references</p>
+        <div class="input-group">
+          <input type="text" id="easter-egg-movie" placeholder="Enter movie title (e.g., The Avengers)">
+          <button class="btn-test" onclick="callEndpoint('easter-egg-guide')">Test</button>
+        </div>
+        <div class="result" id="result-easter-egg-guide"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = window.location.origin;
+    
+    async function callEndpoint(endpointKey) {
+      const resultEl = document.getElementById(`result-${endpointKey}`);
+      resultEl.innerHTML = '⏳ Loading...';
+      resultEl.className = 'result';
+      
+      // Get input value based on endpoint
+      const inputMap = {
+        'movie-info': 'movie-title',
+        'actor-director-trends': 'person-name',
+        'soundtrack-list': 'soundtrack-movie',
+        'filming-location': 'location-movie',
+        'easter-egg-guide': 'easter-egg-movie'
+      };
+      
+      const inputEl = document.getElementById(inputMap[endpointKey]);
+      const query = inputEl.value.trim();
+      
+      if (!query) {
+        resultEl.innerHTML = '❌ Please enter a value';
+        resultEl.className = 'result error';
+        return;
+      }
+      
+      // Build request body
+      const body = endpointKey === 'actor-director-trends' 
+        ? { personName: query }
+        : { movieTitle: query };
+      
+      try {
+        const response = await fetch(`${BASE_URL}/entrypoints/${endpointKey}/invoke`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: body })
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 402) {
+          // Payment required
+          resultEl.innerHTML = `💰 <strong>Payment Required</strong>
+
+To access this paid endpoint, you need to send 0.01 USDC via x402.
+
+Payment Address: ${data.accepts[0].payTo}
+Network: Base (USDC)
+
+This is a demo - free endpoints are fully functional!`;
+          resultEl.className = 'result payment';
+        } else if (data.output) {
+          resultEl.innerHTML = JSON.stringify(data.output, null, 2);
+          resultEl.className = 'result';
+        } else {
+          resultEl.innerHTML = JSON.stringify(data, null, 2);
+          resultEl.className = 'result';
+        }
+      } catch (err) {
+        resultEl.innerHTML = '❌ Error: ' + err.message;
+        resultEl.className = 'result error';
+      }
+    }
+  </script>
+</body>
+</html>
