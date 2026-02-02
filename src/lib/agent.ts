@@ -95,6 +95,31 @@ import { createSoundtrackPrompt } from "./prompts/soundtrack.js";
 import { createLocationPrompt } from "./prompts/location.js";
 import { createEasterEggPrompt } from "./prompts/easter-eggs.js";
 
+// Custom facilitator configuration with CDP authentication
+function createPaymentsConfig() {
+  const facilitatorUrl = process.env.FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform/v2/x402';
+  const cdpApiKey = process.env.CDP_API_KEY;
+  
+  // Create custom fetch with CDP authentication headers
+  const facilitatorHeaders = cdpApiKey 
+    ? { 'Authorization': `Bearer ${cdpApiKey}` }
+    : {};
+  
+  console.log('[payments] Using facilitator:', facilitatorUrl);
+  if (cdpApiKey) {
+    console.log('[payments] CDP authentication: enabled');
+  } else {
+    console.log('[payments] CDP authentication: disabled (no API key)');
+  }
+  
+  return {
+    payTo: (process.env.PAYMENTS_RECEIVABLE_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+    network: process.env.NETWORK || 'base',
+    facilitatorUrl: facilitatorUrl as `${string}://${string}`,
+    facilitatorHeaders,
+  };
+}
+
 // Create agent with payment support
 const agent = await createAgent({
   name: process.env.AGENT_NAME ?? "MovieMemo",
@@ -102,7 +127,7 @@ const agent = await createAgent({
   description: process.env.AGENT_DESCRIPTION ?? "Two-tier movie information agent with free and paid endpoints",
 })
   .use(http())
-  .use(payments({ config: paymentsFromEnv() }))
+  .use(payments({ config: createPaymentsConfig() }))
   .build();
 
 // Create LLM client
