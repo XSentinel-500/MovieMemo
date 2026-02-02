@@ -85,7 +85,8 @@ function parseJsonArray(content: string, label: string): any[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     console.error(`[agent] Failed to parse ${label} JSON:`, error);
-    console.error(`[agent] ${label} raw content (truncated):`, cleanContent.slice(0, 200));
+    console.error(`[agent] ${label} raw content (first 500 chars):`, cleanContent.slice(0, 500));
+    console.error(`[agent] ${label} raw content (last 200 chars):`, cleanContent.slice(-200));
     return [];
   }
 }
