@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createAgentApp } from "@lucid-agents/hono";
 import { createAgent } from "@lucid-agents/core";
 import { createAxLLMClient } from "@lucid-agents/core/axllm";
-import { payments } from "@lucid-agents/payments";
+import { payments, paymentsFromEnv } from "@lucid-agents/payments";
 import { http } from "@lucid-agents/http";
 
 // Import API clients
@@ -25,15 +25,7 @@ const agent = await createAgent({
   description: process.env.AGENT_DESCRIPTION ?? "Two-tier movie information agent with free and paid endpoints",
 })
   .use(http())
-  .use(
-    payments({
-      config: {
-        payTo: (process.env.PAYMENTS_RECEIVABLE_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-        network: 'eip155:8453' as const,
-        facilitatorUrl: (process.env.PAYMENTS_FACILITATOR_URL || 'https://facilitator.daydreams.systems') as `${string}://${string}`,
-      }
-    })
-  )
+  .use(payments({ config: paymentsFromEnv() }))
   .build();
 
 // Create LLM client
@@ -238,7 +230,7 @@ addEntrypoint({
   description: "Get complete soundtrack list with YouTube Music links and scene timestamps",
   input: soundtrackInputSchema,
   output: soundtrackOutputSchema,
-  price: "0.01", // 0.01 USDC
+  price: { amount: 10000 }, // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof soundtrackInputSchema>;
 
@@ -338,7 +330,7 @@ addEntrypoint({
   description: "Identify all major filming locations with Google Maps links",
   input: locationInputSchema,
   output: locationOutputSchema,
-  price: "0.01", // 0.01 USDC
+  price: { amount: 10000 }, // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof locationInputSchema>;
 
@@ -484,7 +476,7 @@ addEntrypoint({
   description: "Discover hidden easter eggs, references, and cameos in the movie",
   input: easterEggInputSchema,
   output: easterEggOutputSchema,
-  price: "0.01", // 0.01 USDC
+  price: { amount: 10000 }, // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof easterEggInputSchema>;
 
