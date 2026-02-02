@@ -58,18 +58,12 @@ async function callMiniMax(prompt: string): Promise<string> {
 }
 
 // Robust JSON parser for LLM responses
-/**
- * Parse JSON array from LLM response with robust handling of various formats
- */
 function parseJsonArray(content: string, label: string): any[] {
-  if (!content || typeof content !== 'string') {
-    console.warn(`[agent] Empty ${label} content`);
-    return [];
-  }
-
-  let cleanContent = content;
-
-  // Remove thinking tags (MiniMax reasoning output)
+  if (!content || typeof content !== 'string') return [];
+  
+  let cleanContent = content.trim();
+  
+  // Remove <think>...</think> tags (MiniMax reasoning output)
   cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
   
   // Remove markdown code block markers
@@ -77,7 +71,7 @@ function parseJsonArray(content: string, label: string): any[] {
   
   // Remove leading/trailing whitespace
   cleanContent = cleanContent.trim();
-
+  
   // Find the first '[' and last ']' to extract the array
   const firstArray = cleanContent.indexOf('[');
   const lastArray = cleanContent.lastIndexOf(']');
@@ -85,8 +79,7 @@ function parseJsonArray(content: string, label: string): any[] {
   if (firstArray !== -1 && lastArray !== -1 && lastArray > firstArray) {
     cleanContent = cleanContent.slice(firstArray, lastArray + 1).trim();
   }
-
-  // Try to parse as-is
+  
   try {
     const parsed = JSON.parse(cleanContent);
     return Array.isArray(parsed) ? parsed : [];
@@ -117,104 +110,12 @@ function parseJsonArray(content: string, label: string): any[] {
           }
         }
       } catch (extractError) {
-        // Ignore
+        // Ignore extraction errors
       }
     }
-  }
 
-  console.error(`[agent] Failed to parse ${label} JSON`);
-  console.error(`[agent] ${label} preview:`, cleanContent.slice(0, 300));
-  return [];
-}
-import { z } from "zod";
-import { createAgentApp } from "@lucid-agents/hono";
-import { createAgent } from "@lucid-agents/core";
-import { createAxLLMClient } from "@lucid-agents/core/axllm";
-import { payments, paymentsFromEnv } from "@lucid-agents/payments";
-import { http } from "@lucid-agents/http";
-
-// Import API clients
-import { tmdbClient } from "./apis/tmdb.js";
-import { youtubeMusicClient } from "./apis/youtube-music.js";
-import { googleMapsClient } from "./apis/google-maps.js";
-
-// Import utilities
-import { formatMovieTimeline, getTopMovies } from "./utils/chart-data.js";
-
-// MiniMax API helper
-async function callMiniMax(prompt: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const apiUrl = process.env.OPENAI_API_URL || 'https://api.minimaxi.com/v1';
-  const model = process.env.OPENAI_MODEL || 'MiniMax-M2.1';
-  
-  if (!apiKey) {
-    console.warn('[agent] MiniMax API key not configured');
-    return '[]';
-  }
-  
-  try {
-    const response = await fetch(`${apiUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        max_completion_tokens: 2048,
-      }),
-    });
-    
-    if (!response.ok) {
-      console.error(`[agent] MiniMax API error: ${response.status}`);
-      return '[]';
-    }
-    
-    const data = await response.json();
-    
-    // Handle OpenAI/MiniMax format: choices[0].message.content
-    if (data.choices && data.choices.length > 0) {
-      return data.choices[0].message?.content || '[]';
-    }
-    
-    return '[]';
-  } catch (error) {
-    console.error('[agent] MiniMax API call failed:', error);
-    return '[]';
-  }
-}
-
-// Robust JSON parser for LLM responses
-function parseJsonArray(content: string, label: string): any[] {
-  if (!content || typeof content !== 'string') return [];
-  
-  let cleanContent = content.trim();
-  
-  // Remove <think>...</think> tags (MiniMax reasoning output)
-  cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-  
-  // Remove markdown code block markers
-  cleanContent = cleanContent.replace(/```\s*json?\s*/gi, '').replace(/```/g, '').trim();
-  
-  // Remove leading/trailing whitespace
-  cleanContent = cleanContent.trim();
-  
-  // Find the first '[' and last ']' to extract the array
-  const firstArray = cleanContent.indexOf('[');
-  const lastArray = cleanContent.lastIndexOf(']');
-  
-  if (firstArray !== -1 && lastArray !== -1 && lastArray > firstArray) {
-    cleanContent = cleanContent.slice(firstArray, lastArray + 1).trim();
-  }
-  
-  try {
-    const parsed = JSON.parse(cleanContent);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error(`[agent] Failed to parse ${label} JSON:`, error);
-    console.error(`[agent] ${label} raw content (first 500 chars):`, cleanContent.slice(0, 500));
-    console.error(`[agent] ${label} raw content (last 200 chars):`, cleanContent.slice(-200));
+    console.error(`[agent] Failed to parse ${label} JSON`);
+    console.error(`[agent] ${label} preview:`, cleanContent.slice(0, 300));
     return [];
   }
 }
@@ -440,7 +341,7 @@ addEntrypoint({
   description: "Get complete soundtrack list with YouTube Music links and scene timestamps",
   input: soundtrackInputSchema,
   output: soundtrackOutputSchema,
-  price: { amount: 10000 }, // 0.01 USDC
+  price: "0.01", // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof soundtrackInputSchema>;
 
@@ -530,7 +431,7 @@ addEntrypoint({
   description: "Identify all major filming locations with Google Maps links",
   input: locationInputSchema,
   output: locationOutputSchema,
-  price: { amount: 10000 }, // 0.01 USDC
+  price: "0.01", // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof locationInputSchema>;
 
@@ -667,7 +568,7 @@ addEntrypoint({
   description: "Discover hidden easter eggs, references, and cameos in the movie",
   input: easterEggInputSchema,
   output: easterEggOutputSchema,
-  price: { amount: 10000 }, // 0.01 USDC
+  price: "0.01", // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof easterEggInputSchema>;
 
