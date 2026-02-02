@@ -307,7 +307,7 @@ addEntrypoint({
   description: "Get complete soundtrack list with YouTube Music links and scene timestamps",
   input: soundtrackInputSchema,
   output: soundtrackOutputSchema,
-  price: { amount: 10000 }, // 0.01 USDC
+  price: "0.01", // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof soundtrackInputSchema>;
 
@@ -397,7 +397,7 @@ addEntrypoint({
   description: "Identify all major filming locations with Google Maps links",
   input: locationInputSchema,
   output: locationOutputSchema,
-  price: { amount: 10000 }, // 0.01 USDC
+  price: "0.01", // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof locationInputSchema>;
 
@@ -534,7 +534,7 @@ addEntrypoint({
   description: "Discover hidden easter eggs, references, and cameos in the movie",
   input: easterEggInputSchema,
   output: easterEggOutputSchema,
-  price: { amount: 10000 }, // 0.01 USDC
+  price: "0.01", // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof easterEggInputSchema>;
 
