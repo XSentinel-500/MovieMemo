@@ -57,6 +57,39 @@ async function callMiniMax(prompt: string): Promise<string> {
   }
 }
 
+// Robust JSON parser for LLM responses
+function parseJsonArray(content: string, label: string): any[] {
+  if (!content || typeof content !== 'string') return [];
+  
+  let cleanContent = content.trim();
+  
+  // Remove <think>...</think> tags (MiniMax reasoning output)
+  cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  
+  // Remove markdown code block markers
+  cleanContent = cleanContent.replace(/```\s*json?\s*/gi, '').replace(/```/g, '').trim();
+  
+  // Remove leading/trailing whitespace
+  cleanContent = cleanContent.trim();
+  
+  // Find the first '[' and last ']' to extract the array
+  const firstArray = cleanContent.indexOf('[');
+  const lastArray = cleanContent.lastIndexOf(']');
+  
+  if (firstArray !== -1 && lastArray !== -1 && lastArray > firstArray) {
+    cleanContent = cleanContent.slice(firstArray, lastArray + 1).trim();
+  }
+  
+  try {
+    const parsed = JSON.parse(cleanContent);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error(`[agent] Failed to parse ${label} JSON:`, error);
+    console.error(`[agent] ${label} raw content (truncated):`, cleanContent.slice(0, 200));
+    return [];
+  }
+}
+
 // Import prompts
 import { createSoundtrackPrompt } from "./prompts/soundtrack.js";
 import { createLocationPrompt } from "./prompts/location.js";
@@ -300,17 +333,7 @@ addEntrypoint({
 
       try {
         const content = await callMiniMax(prompt);
-        
-        // Handle markdown code blocks
-        let cleanContent = content;
-        if (typeof cleanContent === 'string' && cleanContent.trim().startsWith('```')) {
-          const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-          if (jsonMatch) {
-            cleanContent = jsonMatch[1];
-          }
-        }
-        
-        soundtrackData = JSON.parse(cleanContent || '[]');
+        soundtrackData = parseJsonArray(content, 'soundtrack');
       } catch (e) {
         console.error('Failed to parse LLM response:', e);
         soundtrackData = [];
@@ -400,17 +423,7 @@ addEntrypoint({
 
       try {
         const content = await callMiniMax(prompt);
-        
-        // Handle markdown code blocks
-        let cleanContent = content;
-        if (typeof cleanContent === 'string' && cleanContent.trim().startsWith('```')) {
-          const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-          if (jsonMatch) {
-            cleanContent = jsonMatch[1];
-          }
-        }
-        
-        locationData = JSON.parse(cleanContent || '[]');
+        locationData = parseJsonArray(content, 'locations');
       } catch (e) {
         console.error('Failed to parse LLM response:', e);
         locationData = [];
@@ -547,17 +560,7 @@ addEntrypoint({
 
       try {
         const content = await callMiniMax(prompt);
-        
-        // Handle markdown code blocks
-        let cleanContent = content;
-        if (typeof cleanContent === 'string' && cleanContent.trim().startsWith('```')) {
-          const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-          if (jsonMatch) {
-            cleanContent = jsonMatch[1];
-          }
-        }
-        
-        easterEggData = JSON.parse(cleanContent || '[]');
+        easterEggData = parseJsonArray(content, 'easter-eggs');
       } catch (e) {
         console.error('Failed to parse LLM response:', e);
         easterEggData = [];
