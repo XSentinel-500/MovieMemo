@@ -413,8 +413,7 @@ addEntrypoint({
         locationData = JSON.parse(cleanContent || '[]');
       } catch (e) {
         console.error('Failed to parse LLM response:', e);
-          locationData = [];
-        }
+        locationData = [];
       }
 
       // Enrich with Google Maps data
