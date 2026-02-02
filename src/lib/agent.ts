@@ -10,9 +10,6 @@ import { tmdbClient } from "./apis/tmdb.js";
 import { youtubeMusicClient } from "./apis/youtube-music.js";
 import { googleMapsClient } from "./apis/google-maps.js";
 
-// Import utilities
-import { formatMovieTimeline, getTopMovies } from "./utils/chart-data.js";
-
 // MiniMax API helper
 async function callMiniMax(prompt: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -236,26 +233,23 @@ addEntrypoint({
 });
 
 // ============================================================================
-// FREE ENDPOINT 2: actor-director-trends
+// FREE ENDPOINT 2: actor-stats
 // ============================================================================
 
-const trendsInputSchema = z.object({
-  personName: z.string().min(1).describe('Actor or director name'),
-  limit: z.number().min(1).max(20).default(10).describe('Number of movies to include'),
+const actorStatsInputSchema = z.object({
+  actorName: z.string().min(1).describe('Actor name to search for'),
 });
 
-const trendsOutputSchema = z.object({
-  personName: z.string(),
-  chartData: z.object({
-    labels: z.array(z.string()),
-    datasets: z.array(z.object({
-      label: z.string(),
-      data: z.array(z.number()),
-      borderColor: z.string(),
-      tension: z.number(),
-    })),
+const actorStatsOutputSchema = z.object({
+  actorName: z.string(),
+  movieCount: z.number(),
+  averageRating: z.number(),
+  highestRated: z.object({
+    title: z.string(),
+    rating: z.number(),
+    year: z.string(),
   }),
-  topMovies: z.array(z.object({
+  top3Movies: z.array(z.object({
     title: z.string(),
     rating: z.number(),
     year: z.string(),
@@ -263,54 +257,146 @@ const trendsOutputSchema = z.object({
 });
 
 addEntrypoint({
-  key: "actor-director-trends",
-  description: "Get career trends and ratings timeline for an actor or director",
-  input: trendsInputSchema,
-  output: trendsOutputSchema,
+  key: "actor-stats",
+  description: "Get actor movie statistics - average rating, highest rated movie, and top 3 films",
+  input: actorStatsInputSchema,
+  output: actorStatsOutputSchema,
   handler: async (ctx) => {
-    const input = ctx.input as z.infer<typeof trendsInputSchema>;
+    const input = ctx.input as z.infer<typeof actorStatsInputSchema>;
 
     try {
-      // Search for person
-      const person = await tmdbClient.searchPerson(input.personName);
+      // Search for actor
+      const person = await tmdbClient.searchPerson(input.actorName);
       if (!person) {
-        throw new Error(`Person "${input.personName}" not found`);
+        throw new Error(`Actor "${input.actorName}" not found`);
       }
 
-      // Get their movies
+      // Get their movies (cast only)
       const credits = await tmdbClient.getPersonMovies(person.id);
+      const movies = (credits.cast || []).filter(m => m.vote_average > 0 && m.release_date);
 
-      // Combine cast and crew movies
-      const allMovies = [
-        ...(credits.cast || []),
-        ...(credits.crew || []).filter(m => m.job === 'Director'),
-      ];
+      if (movies.length === 0) {
+        throw new Error(`No rated movies found for actor "${input.actorName}"`);
+      }
 
-      // Remove duplicates and filter out movies without ratings
-      const uniqueMovies = Array.from(
-        new Map(allMovies.map(m => [m.id, m])).values()
-      ).filter(m => m.vote_average > 0 && m.release_date);
+      // Calculate average rating
+      const totalRating = movies.reduce((sum, m) => sum + m.vote_average, 0);
+      const averageRating = Math.round((totalRating / movies.length) * 100) / 100;
 
-      // Sort by release date and limit
-      const sortedMovies = uniqueMovies
-        .sort((a, b) => new Date(a.release_date).getTime() - new Date(b.release_date).getTime())
-        .slice(0, input.limit);
+      // Sort by rating (highest first)
+      const sortedByRating = [...movies].sort((a, b) => b.vote_average - a.vote_average);
 
-      // Format chart data
-      const chartData = formatMovieTimeline(sortedMovies);
+      // Highest rated
+      const highest = sortedByRating[0];
+      const highestRated = {
+        title: highest.title,
+        rating: highest.vote_average,
+        year: highest.release_date ? new Date(highest.release_date).getFullYear().toString() : 'Unknown',
+      };
 
-      // Get top movies
-      const topMovies = getTopMovies(sortedMovies, 3);
+      // Top 3 movies
+      const top3Movies = sortedByRating.slice(0, 3).map(m => ({
+        title: m.title,
+        rating: m.vote_average,
+        year: m.release_date ? new Date(m.release_date).getFullYear().toString() : 'Unknown',
+      }));
 
       return {
         output: {
-          personName: person.name,
-          chartData,
-          topMovies,
+          actorName: person.name,
+          movieCount: movies.length,
+          averageRating,
+          highestRated,
+          top3Movies,
         },
       };
     } catch (error: any) {
-      throw new Error(`Failed to fetch trends: ${error.message}`);
+      throw new Error(`Failed to fetch actor stats: ${error.message}`);
+    }
+  },
+});
+
+// ============================================================================
+// FREE ENDPOINT 3: director-stats
+// ============================================================================
+
+const directorStatsInputSchema = z.object({
+  directorName: z.string().min(1).describe('Director name to search for'),
+});
+
+const directorStatsOutputSchema = z.object({
+  directorName: z.string(),
+  movieCount: z.number(),
+  averageRating: z.number(),
+  highestRated: z.object({
+    title: z.string(),
+    rating: z.number(),
+    year: z.string(),
+  }),
+  top3Movies: z.array(z.object({
+    title: z.string(),
+    rating: z.number(),
+    year: z.string(),
+  })),
+});
+
+addEntrypoint({
+  key: "director-stats",
+  description: "Get director movie statistics - average rating, highest rated movie, and top 3 films",
+  input: directorStatsInputSchema,
+  output: directorStatsOutputSchema,
+  handler: async (ctx) => {
+    const input = ctx.input as z.infer<typeof directorStatsInputSchema>;
+
+    try {
+      // Search for director
+      const person = await tmdbClient.searchPerson(input.directorName);
+      if (!person) {
+        throw new Error(`Director "${input.directorName}" not found`);
+      }
+
+      // Get their movies (crew - Director job only)
+      const credits = await tmdbClient.getPersonMovies(person.id);
+      const movies = (credits.crew || [])
+        .filter(m => m.job === 'Director' && m.vote_average > 0 && m.release_date);
+
+      if (movies.length === 0) {
+        throw new Error(`No rated director films found for "${input.directorName}"`);
+      }
+
+      // Calculate average rating
+      const totalRating = movies.reduce((sum, m) => sum + m.vote_average, 0);
+      const averageRating = Math.round((totalRating / movies.length) * 100) / 100;
+
+      // Sort by rating (highest first)
+      const sortedByRating = [...movies].sort((a, b) => b.vote_average - a.vote_average);
+
+      // Highest rated
+      const highest = sortedByRating[0];
+      const highestRated = {
+        title: highest.title,
+        rating: highest.vote_average,
+        year: highest.release_date ? new Date(highest.release_date).getFullYear().toString() : 'Unknown',
+      };
+
+      // Top 3 movies
+      const top3Movies = sortedByRating.slice(0, 3).map(m => ({
+        title: m.title,
+        rating: m.vote_average,
+        year: m.release_date ? new Date(m.release_date).getFullYear().toString() : 'Unknown',
+      }));
+
+      return {
+        output: {
+          directorName: person.name,
+          movieCount: movies.length,
+          averageRating,
+          highestRated,
+          top3Movies,
+        },
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to fetch director stats: ${error.message}`);
     }
   },
 });
@@ -617,6 +703,105 @@ addEntrypoint({
       throw new Error(`Failed to fetch easter eggs: ${error.message}`);
     }
   },
+});
+
+// ============================================================================
+// GET INVOKE SUPPORT (for browser paywall pages)
+// ============================================================================
+
+// Free endpoint GET support
+app.get('/entrypoints/movie-info/invoke', async (c) => {
+  const movieTitle = c.req.query('movieTitle');
+  if (!movieTitle) {
+    return c.json({ error: 'movieTitle query parameter required' }, 400);
+  }
+  const response = await app.request(
+    new Request('http://localhost/entrypoints/movie-info/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { movieTitle } }),
+    })
+  );
+  return new Response(response.body, { status: response.status, headers: response.headers });
+});
+
+// Paid endpoint GET support (protected by x402 paywall)
+// These routes trigger the paywall flow in browsers
+app.get('/entrypoints/soundtrack-list/invoke', async (c) => {
+  const movieTitle = c.req.query('movieTitle');
+  if (!movieTitle) {
+    return c.json({ error: 'movieTitle query parameter required' }, 400);
+  }
+  const response = await app.request(
+    new Request('http://localhost/entrypoints/soundtrack-list/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { movieTitle } }),
+    })
+  );
+  return new Response(response.body, { status: response.status, headers: response.headers });
+});
+
+app.get('/entrypoints/filming-location/invoke', async (c) => {
+  const movieTitle = c.req.query('movieTitle');
+  if (!movieTitle) {
+    return c.json({ error: 'movieTitle query parameter required' }, 400);
+  }
+  const response = await app.request(
+    new Request('http://localhost/entrypoints/filming-location/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { movieTitle } }),
+    })
+  );
+  return new Response(response.body, { status: response.status, headers: response.headers });
+});
+
+app.get('/entrypoints/easter-egg-guide/invoke', async (c) => {
+  const movieTitle = c.req.query('movieTitle');
+  if (!movieTitle) {
+    return c.json({ error: 'movieTitle query parameter required' }, 400);
+  }
+  const response = await app.request(
+    new Request('http://localhost/entrypoints/easter-egg-guide/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { movieTitle } }),
+    })
+  );
+  return new Response(response.body, { status: response.status, headers: response.headers });
+});
+
+// Actor stats GET support
+app.get('/entrypoints/actor-stats/invoke', async (c) => {
+  const actorName = c.req.query('actorName');
+  if (!actorName) {
+    return c.json({ error: 'actorName query parameter required' }, 400);
+  }
+  const response = await app.request(
+    new Request('http://localhost/entrypoints/actor-stats/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { actorName } }),
+    })
+  );
+  return new Response(response.body, { status: response.status, headers: response.headers });
+});
+
+// Director stats GET support
+app.get('/entrypoints/director-stats/invoke', async (c) => {
+  const directorName = c.req.query('directorName');
+  if (!directorName) {
+    return c.json({ error: 'directorName query parameter required' }, 400);
+  }
+  const response = await app.request(
+    new Request('http://localhost/entrypoints/director-stats/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { directorName } }),
+    })
+  );
+  return new Response(response.body, { status: response.status, headers: response.headers });
 });
 
 export { app };

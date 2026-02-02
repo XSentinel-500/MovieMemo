@@ -12,4 +12,5 @@ console.log(`Starting agent server on port ${port}...`);
 export default {
   port,
   fetch: app.fetch,
+  idleTimeout: 120,  // Increased timeout for slow LLM calls
 };
