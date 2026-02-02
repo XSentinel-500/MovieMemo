@@ -95,6 +95,10 @@ import { createSoundtrackPrompt } from "./prompts/soundtrack.js";
 import { createLocationPrompt } from "./prompts/location.js";
 import { createEasterEggPrompt } from "./prompts/easter-eggs.js";
 
+// Debug: Log payments config
+const paymentsConfig = paymentsFromEnv();
+console.log('[DEBUG] paymentsConfig:', JSON.stringify(paymentsConfig, null, 2));
+
 // Create agent with payment support
 const agent = await createAgent({
   name: process.env.AGENT_NAME ?? "MovieMemo",
@@ -102,7 +106,7 @@ const agent = await createAgent({
   description: process.env.AGENT_DESCRIPTION ?? "Two-tier movie information agent with free and paid endpoints",
 })
   .use(http())
-  .use(payments({ config: paymentsFromEnv() }))
+  .use(payments({ config: paymentsConfig }))
   .build();
 
 // Create LLM client
