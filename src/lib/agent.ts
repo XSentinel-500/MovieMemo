@@ -13,6 +13,50 @@ import { googleMapsClient } from "./apis/google-maps.js";
 // Import utilities
 import { formatMovieTimeline, getTopMovies } from "./utils/chart-data.js";
 
+// MiniMax API helper
+async function callMiniMax(prompt: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const apiUrl = process.env.OPENAI_API_URL || 'https://api.minimaxi.com/v1';
+  const model = process.env.OPENAI_MODEL || 'MiniMax-M2.1';
+  
+  if (!apiKey) {
+    console.warn('[agent] MiniMax API key not configured');
+    return '[]';
+  }
+  
+  try {
+    const response = await fetch(`${apiUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_completion_tokens: 2048,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error(`[agent] MiniMax API error: ${response.status}`);
+      return '[]';
+    }
+    
+    const data = await response.json();
+    
+    // Handle OpenAI/MiniMax format: choices[0].message.content
+    if (data.choices && data.choices.length > 0) {
+      return data.choices[0].message?.content || '[]';
+    }
+    
+    return '[]';
+  } catch (error) {
+    console.error('[agent] MiniMax API call failed:', error);
+    return '[]';
+  }
+}
+
 // Import prompts
 import { createSoundtrackPrompt } from "./prompts/soundtrack.js";
 import { createLocationPrompt } from "./prompts/location.js";
@@ -254,37 +298,22 @@ addEntrypoint({
 
       let soundtrackData: any[] = [];
 
-      if (axClient.isConfigured() && axClient.ax) {
-        const response = await axClient.ax.chat({
-          chatPrompt: [{ role: 'user', content: prompt }]
-        });
-
-        try {
-          // Parse JSON response - handle different LLM response formats
-          let content = '';
-          
-          // Format 1: OpenAI/MiniMax style (choices[0].message.content)
-          if ('choices' in response && response.choices?.length > 0) {
-            content = response.choices[0]?.message?.content || '[]';
+      try {
+        const content = await callMiniMax(prompt);
+        
+        // Handle markdown code blocks
+        let cleanContent = content;
+        if (typeof cleanContent === 'string' && cleanContent.trim().startsWith('```')) {
+          const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (jsonMatch) {
+            cleanContent = jsonMatch[1];
           }
-          // Format 2: Legacy format (results[0].content)
-          else if ('results' in response) {
-            content = response.results[0]?.content || '[]';
-          }
-          
-          // Handle if content is wrapped in markdown code blocks
-          if (typeof content === 'string' && content.trim().startsWith('```')) {
-            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-              content = jsonMatch[1];
-            }
-          }
-          
-          soundtrackData = JSON.parse(content || '[]');
-        } catch (e) {
-          console.error('Failed to parse LLM response:', e);
-          soundtrackData = [];
         }
+        
+        soundtrackData = JSON.parse(cleanContent || '[]');
+      } catch (e) {
+        console.error('Failed to parse LLM response:', e);
+        soundtrackData = [];
       }
 
       // Enrich with YouTube Music links (no API key needed!)
@@ -369,35 +398,21 @@ addEntrypoint({
 
       let locationData: any[] = [];
 
-      if (axClient.isConfigured() && axClient.ax) {
-        const response = await axClient.ax.chat({
-          chatPrompt: [{ role: 'user', content: prompt }]
-        });
-
-        try {
-          // Parse JSON response - handle different LLM response formats
-          let content = '';
-          
-          // Format 1: OpenAI/MiniMax style (choices[0].message.content)
-          if ('choices' in response && response.choices?.length > 0) {
-            content = response.choices[0]?.message?.content || '[]';
+      try {
+        const content = await callMiniMax(prompt);
+        
+        // Handle markdown code blocks
+        let cleanContent = content;
+        if (typeof cleanContent === 'string' && cleanContent.trim().startsWith('```')) {
+          const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (jsonMatch) {
+            cleanContent = jsonMatch[1];
           }
-          // Format 2: Legacy format (results[0].content)
-          else if ('results' in response) {
-            content = response.results[0]?.content || '[]';
-          }
-          
-          // Handle if content is wrapped in markdown code blocks
-          if (typeof content === 'string' && content.trim().startsWith('```')) {
-            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-              content = jsonMatch[1];
-            }
-          }
-          
-          locationData = JSON.parse(content || '[]');
-        } catch (e) {
-          console.error('Failed to parse LLM response:', e);
+        }
+        
+        locationData = JSON.parse(cleanContent || '[]');
+      } catch (e) {
+        console.error('Failed to parse LLM response:', e);
           locationData = [];
         }
       }
@@ -531,37 +546,22 @@ addEntrypoint({
 
       let easterEggData: any[] = [];
 
-      if (axClient.isConfigured() && axClient.ax) {
-        const response = await axClient.ax.chat({
-          chatPrompt: [{ role: 'user', content: prompt }]
-        });
-
-        try {
-          // Parse JSON response - handle different LLM response formats
-          let content = '';
-          
-          // Format 1: OpenAI/MiniMax style (choices[0].message.content)
-          if ('choices' in response && response.choices?.length > 0) {
-            content = response.choices[0]?.message?.content || '[]';
+      try {
+        const content = await callMiniMax(prompt);
+        
+        // Handle markdown code blocks
+        let cleanContent = content;
+        if (typeof cleanContent === 'string' && cleanContent.trim().startsWith('```')) {
+          const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (jsonMatch) {
+            cleanContent = jsonMatch[1];
           }
-          // Format 2: Legacy format (results[0].content)
-          else if ('results' in response) {
-            content = response.results[0]?.content || '[]';
-          }
-          
-          // Handle if content is wrapped in markdown code blocks
-          if (typeof content === 'string' && content.trim().startsWith('```')) {
-            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-              content = jsonMatch[1];
-            }
-          }
-          
-          easterEggData = JSON.parse(content || '[]');
-        } catch (e) {
-          console.error('Failed to parse LLM response:', e);
-          easterEggData = [];
         }
+        
+        easterEggData = JSON.parse(cleanContent || '[]');
+      } catch (e) {
+        console.error('Failed to parse LLM response:', e);
+        easterEggData = [];
       }
 
       return {
