@@ -260,12 +260,27 @@ addEntrypoint({
         });
 
         try {
-          // Parse JSON response - handle both streaming and non-streaming
+          // Parse JSON response - handle different LLM response formats
           let content = '';
-          if ('results' in response) {
+          
+          // Format 1: OpenAI/MiniMax style (choices[0].message.content)
+          if ('choices' in response && response.choices?.length > 0) {
+            content = response.choices[0]?.message?.content || '[]';
+          }
+          // Format 2: Legacy format (results[0].content)
+          else if ('results' in response) {
             content = response.results[0]?.content || '[]';
           }
-          soundtrackData = JSON.parse(content);
+          
+          // Handle if content is wrapped in markdown code blocks
+          if (typeof content === 'string' && content.trim().startsWith('```')) {
+            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+              content = jsonMatch[1];
+            }
+          }
+          
+          soundtrackData = JSON.parse(content || '[]');
         } catch (e) {
           console.error('Failed to parse LLM response:', e);
           soundtrackData = [];
@@ -360,11 +375,27 @@ addEntrypoint({
         });
 
         try {
+          // Parse JSON response - handle different LLM response formats
           let content = '';
-          if ('results' in response) {
+          
+          // Format 1: OpenAI/MiniMax style (choices[0].message.content)
+          if ('choices' in response && response.choices?.length > 0) {
+            content = response.choices[0]?.message?.content || '[]';
+          }
+          // Format 2: Legacy format (results[0].content)
+          else if ('results' in response) {
             content = response.results[0]?.content || '[]';
           }
-          locationData = JSON.parse(content);
+          
+          // Handle if content is wrapped in markdown code blocks
+          if (typeof content === 'string' && content.trim().startsWith('```')) {
+            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+              content = jsonMatch[1];
+            }
+          }
+          
+          locationData = JSON.parse(content || '[]');
         } catch (e) {
           console.error('Failed to parse LLM response:', e);
           locationData = [];
@@ -506,11 +537,27 @@ addEntrypoint({
         });
 
         try {
+          // Parse JSON response - handle different LLM response formats
           let content = '';
-          if ('results' in response) {
+          
+          // Format 1: OpenAI/MiniMax style (choices[0].message.content)
+          if ('choices' in response && response.choices?.length > 0) {
+            content = response.choices[0]?.message?.content || '[]';
+          }
+          // Format 2: Legacy format (results[0].content)
+          else if ('results' in response) {
             content = response.results[0]?.content || '[]';
           }
-          easterEggData = JSON.parse(content);
+          
+          // Handle if content is wrapped in markdown code blocks
+          if (typeof content === 'string' && content.trim().startsWith('```')) {
+            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+              content = jsonMatch[1];
+            }
+          }
+          
+          easterEggData = JSON.parse(content || '[]');
         } catch (e) {
           console.error('Failed to parse LLM response:', e);
           easterEggData = [];
