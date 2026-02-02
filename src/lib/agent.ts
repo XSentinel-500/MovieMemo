@@ -5,14 +5,6 @@ import { createAxLLMClient } from "@lucid-agents/core/axllm";
 import { payments, paymentsFromEnv } from "@lucid-agents/payments";
 import { http } from "@lucid-agents/http";
 
-// DEBUG: Print environment variables
-console.log('[DEBUG] Environment variables:');
-console.log('  FACILITATOR_URL:', process.env.FACILITATOR_URL || '(not set)');
-console.log('  NETWORK:', process.env.NETWORK || '(not set)');
-console.log('  PAYMENTS_RECEIVABLE_ADDRESS:', process.env.PAYMENTS_RECEIVABLE_ADDRESS || '(not set)');
-console.log('  OPENAI_API_URL:', process.env.OPENAI_API_URL || '(not set)');
-console.log('  OPENAI_MODEL:', process.env.OPENAI_MODEL || '(not set)');
-
 // Import API clients
 import { tmdbClient } from "./apis/tmdb.js";
 import { youtubeMusicClient } from "./apis/youtube-music.js";
@@ -70,13 +62,6 @@ import { createSoundtrackPrompt } from "./prompts/soundtrack.js";
 import { createLocationPrompt } from "./prompts/location.js";
 import { createEasterEggPrompt } from "./prompts/easter-eggs.js";
 
-// DEBUG: Print paymentsFromEnv() result
-const paymentConfig = paymentsFromEnv();
-console.log('[DEBUG] paymentsFromEnv():');
-console.log('  network:', paymentConfig.network || '(not set)');
-console.log('  facilitatorUrl:', paymentConfig.facilitatorUrl || '(not set)');
-console.log('  payTo:', paymentConfig.payTo || '(not set)');
-
 // Create agent with payment support
 const agent = await createAgent({
   name: process.env.AGENT_NAME ?? "MovieMemo",
@@ -84,7 +69,7 @@ const agent = await createAgent({
   description: process.env.AGENT_DESCRIPTION ?? "Two-tier movie information agent with free and paid endpoints",
 })
   .use(http())
-  .use(payments({ config: paymentConfig }))
+  .use(payments({ config: paymentsFromEnv() }))
   .build();
 
 // Create LLM client
