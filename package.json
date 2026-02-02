@@ -14,7 +14,6 @@
     "@lucid-agents/hono": "latest",
     "@lucid-agents/http": "latest",
     "@lucid-agents/payments": "latest",
-    "@lucid-agents/analytics": "latest",
     "hono": "^4.0.0",
     "zod": "^4.0.0"
   },
