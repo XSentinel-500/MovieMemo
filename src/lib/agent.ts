@@ -95,31 +95,6 @@ import { createSoundtrackPrompt } from "./prompts/soundtrack.js";
 import { createLocationPrompt } from "./prompts/location.js";
 import { createEasterEggPrompt } from "./prompts/easter-eggs.js";
 
-// Custom facilitator configuration with CDP authentication
-function createPaymentsConfig() {
-  const facilitatorUrl = process.env.FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform/v2/x402';
-  const cdpApiKey = process.env.CDP_API_KEY;
-  
-  // Create custom fetch with CDP authentication headers
-  const facilitatorHeaders = cdpApiKey 
-    ? { 'Authorization': `Bearer ${cdpApiKey}` }
-    : {};
-  
-  console.log('[payments] Using facilitator:', facilitatorUrl);
-  if (cdpApiKey) {
-    console.log('[payments] CDP authentication: enabled');
-  } else {
-    console.log('[payments] CDP authentication: disabled (no API key)');
-  }
-  
-  return {
-    payTo: (process.env.PAYMENTS_RECEIVABLE_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-    network: process.env.NETWORK || 'base',
-    facilitatorUrl: facilitatorUrl as `${string}://${string}`,
-    facilitatorHeaders,
-  };
-}
-
 // Create agent with payment support
 const agent = await createAgent({
   name: process.env.AGENT_NAME ?? "MovieMemo",
@@ -127,7 +102,7 @@ const agent = await createAgent({
   description: process.env.AGENT_DESCRIPTION ?? "Two-tier movie information agent with free and paid endpoints",
 })
   .use(http())
-  .use(payments({ config: createPaymentsConfig() }))
+  .use(payments({ config: paymentsFromEnv() }))
   .build();
 
 // Create LLM client
@@ -332,7 +307,7 @@ addEntrypoint({
   description: "Get complete soundtrack list with YouTube Music links and scene timestamps",
   input: soundtrackInputSchema,
   output: soundtrackOutputSchema,
-  price: "0.01", // 0.01 USDC
+  price: { amount: 10000 }, // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof soundtrackInputSchema>;
 
@@ -422,7 +397,7 @@ addEntrypoint({
   description: "Identify all major filming locations with Google Maps links",
   input: locationInputSchema,
   output: locationOutputSchema,
-  price: "0.01", // 0.01 USDC
+  price: { amount: 10000 }, // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof locationInputSchema>;
 
@@ -559,7 +534,7 @@ addEntrypoint({
   description: "Discover hidden easter eggs, references, and cameos in the movie",
   input: easterEggInputSchema,
   output: easterEggOutputSchema,
-  price: "0.01", // 0.01 USDC
+  price: { amount: 10000 }, // 0.01 USDC
   handler: async (ctx) => {
     const input = ctx.input as z.infer<typeof easterEggInputSchema>;
 
