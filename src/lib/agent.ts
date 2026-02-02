@@ -58,6 +58,134 @@ async function callMiniMax(prompt: string): Promise<string> {
 }
 
 // Robust JSON parser for LLM responses
+/**
+ * Parse JSON array from LLM response with robust handling of various formats
+ */
+function parseJsonArray(content: string, label: string): any[] {
+  if (!content || typeof content !== 'string') {
+    console.warn(`[agent] Empty ${label} content`);
+    return [];
+  }
+
+  let cleanContent = content;
+
+  // Remove thinking tags (MiniMax reasoning output)
+  cleanContent = cleanContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  
+  // Remove markdown code block markers
+  cleanContent = cleanContent.replace(/```\s*json?\s*/gi, '').replace(/```/g, '').trim();
+  
+  // Remove leading/trailing whitespace
+  cleanContent = cleanContent.trim();
+
+  // Find the first '[' and last ']' to extract the array
+  const firstArray = cleanContent.indexOf('[');
+  const lastArray = cleanContent.lastIndexOf(']');
+  
+  if (firstArray !== -1 && lastArray !== -1 && lastArray > firstArray) {
+    cleanContent = cleanContent.slice(firstArray, lastArray + 1).trim();
+  }
+
+  // Try to parse as-is
+  try {
+    const parsed = JSON.parse(cleanContent);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    // Try to fix common issues
+    try {
+      const fixed = cleanContent
+        .replace(/'/g, '"')
+        .replace(/,\s*}/g, '}')
+        .replace(/,\s*]/g, ']');
+      const parsed = JSON.parse(fixed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (fixError) {
+      // Try extracting individual objects
+      try {
+        const objectMatches = cleanContent.match(/\{[^}]+\}/g);
+        if (objectMatches) {
+          const objects = objectMatches.map(obj => {
+            try {
+              return JSON.parse(obj.replace(/'/g, '"'));
+            } catch {
+              return null;
+            }
+          }).filter(Boolean);
+          if (objects.length > 0) {
+            console.log(`[agent] ${label}: extracted ${objects.length} objects from malformed JSON`);
+            return objects;
+          }
+        }
+      } catch (extractError) {
+        // Ignore
+      }
+    }
+  }
+
+  console.error(`[agent] Failed to parse ${label} JSON`);
+  console.error(`[agent] ${label} preview:`, cleanContent.slice(0, 300));
+  return [];
+}
+import { z } from "zod";
+import { createAgentApp } from "@lucid-agents/hono";
+import { createAgent } from "@lucid-agents/core";
+import { createAxLLMClient } from "@lucid-agents/core/axllm";
+import { payments, paymentsFromEnv } from "@lucid-agents/payments";
+import { http } from "@lucid-agents/http";
+
+// Import API clients
+import { tmdbClient } from "./apis/tmdb.js";
+import { youtubeMusicClient } from "./apis/youtube-music.js";
+import { googleMapsClient } from "./apis/google-maps.js";
+
+// Import utilities
+import { formatMovieTimeline, getTopMovies } from "./utils/chart-data.js";
+
+// MiniMax API helper
+async function callMiniMax(prompt: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const apiUrl = process.env.OPENAI_API_URL || 'https://api.minimaxi.com/v1';
+  const model = process.env.OPENAI_MODEL || 'MiniMax-M2.1';
+  
+  if (!apiKey) {
+    console.warn('[agent] MiniMax API key not configured');
+    return '[]';
+  }
+  
+  try {
+    const response = await fetch(`${apiUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_completion_tokens: 2048,
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error(`[agent] MiniMax API error: ${response.status}`);
+      return '[]';
+    }
+    
+    const data = await response.json();
+    
+    // Handle OpenAI/MiniMax format: choices[0].message.content
+    if (data.choices && data.choices.length > 0) {
+      return data.choices[0].message?.content || '[]';
+    }
+    
+    return '[]';
+  } catch (error) {
+    console.error('[agent] MiniMax API call failed:', error);
+    return '[]';
+  }
+}
+
+// Robust JSON parser for LLM responses
 function parseJsonArray(content: string, label: string): any[] {
   if (!content || typeof content !== 'string') return [];
   
