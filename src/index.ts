@@ -5,7 +5,9 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 // Serve static HTML frontend from public directory
 app.get('/', (c) => c.redirect('/index.html'));
-app.use('/*', serveStatic({ root: './public' }));
+// Hono type versions may differ between @lucid-agents/hono and hono/bun.
+// This cast keeps runtime behavior while avoiding TS false-positives.
+app.use('/*', serveStatic({ root: './public' }) as any);
 
 console.log(`Starting agent server on port ${port}...`);
 

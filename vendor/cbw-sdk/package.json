@@ -1,0 +1,15 @@
+{
+  "name": "cbw-sdk",
+  "version": "3.9.3",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./preact": "./preact.js"
+  },
+  "dependencies": {
+    "@coinbase/wallet-sdk": "^3.9.3"
+  }
+}
